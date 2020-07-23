@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <cmath>
 #include <sstream>
+#include <algorithm>
+
 
 
 #include <glad/glad.h>
@@ -28,6 +30,10 @@ namespace bfly{
 #define BUTTON_HOVER 1
 #define BUTTON_PRESS 2
 #define BUTTON_CLICKED 3
+
+//ORDER
+#define LEFT_TO_RIGHT 0
+#define RIGHT_TO_LEFT 1
 
 
 using namespace std;
@@ -100,7 +106,7 @@ using namespace std;
   public:
    Component(string _name):name(_name){
        visible=true;
-       order=0;
+       order=LEFT_TO_RIGHT;
        tooltip="";
        animation_timer=0;
    }
@@ -114,13 +120,13 @@ using namespace std;
    void set_color2(float r,float g,float b)    { style.color2={r,g,b}; }
    void set_border_color(float r,float g,float b)    { style.border_color={r,g,b}; }
    void set_opacity(float a)             { style.opacity=a; }
-   void set_text_size(int size)          { style.text_size=size; }
+   void set_text_size(int size);
    void set_text_color(float r,float g,float b)    { style.text_color={r,g,b}; }
    void set_border_width(int w)          { style.border_width=w; }
    void set_name(string n)               { name=n;  }
    void set_tooltip(string t)            { tooltip=t; }
    void set_order(int i)                 { order=i; }
-   void set_text(string t)               { text=t; }
+   void set_text(string t);
    void set_texture_id(GLuint id)        { image_id=id; }
 
   protected:
@@ -149,15 +155,17 @@ using namespace std;
     void draw();
     void process_events();
     void set_options(unsigned bitmask) {}
-
+    void has_render_rect(bool b){background_rectangle=b;}
+    void has_icon(bool b){icon=b;}
+    void set_text_size(int size);
+    void set_text(string t);
   private:
-
+    void rect_uniforms();
     Vector3 press_color;
     Vector3 click_color;
     void (*click)(void);
-    //2^0 background image or icon
-    //2^1 without background rectangle bool
-    unsigned options;
+    bool background_rectangle;
+    bool icon;
  };
 
 class ToggleButton:public Component{
@@ -169,11 +177,49 @@ class ToggleButton:public Component{
      void draw();
     void process_events();
 
-  private:
+    void set_options(unsigned bitmask) {}
+    void has_render_rect(bool b){background_rectangle=b;}
+    void has_icon(bool b){icon=b;}
+    void set_text_size(int size);
+    void set_text(string t);
 
+  private:
+    void rect_uniforms();
     Vector3 press_color;
     Vector3 click_color;
+
     void (*toggle)(void);
+    bool value;
+
+    bool background_rectangle;
+    bool icon;
+};
+
+class CheckBox : public Component{
+  public:
+    CheckBox();
+    void set_toggle_event(void (*toggle_event)(void)){
+       toggle=toggle_event;
+     }
+    void draw();
+    void process_events();
+
+    void set_options(unsigned bitmask) {}
+    void has_render_rect(bool b){background_rectangle=b;}
+    void has_icon(bool b){icon=b;}
+    void set_text_size(int size);
+    void set_text(string t);
+
+  private:
+    void rect_uniforms();
+    Vector3 press_color;
+    Vector3 click_color;
+
+    void (*toggle)(void);
+    bool value;
+
+    bool background_rectangle;
+    bool icon;
 };
 
 

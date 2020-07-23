@@ -17,10 +17,10 @@ void main(){
       float uy=uv_coord.y*rect_size.y;
       if(ux<rect_size.x-border_width && ux>border_width && uy<rect_size.y-border_width && uy>border_width){
       float factor=distance(uv_coord,vec2(0.5));
-      gl_FragColor=vec4( (1-factor)*color1 + factor*color2 ,1.0);
+      gl_FragColor=vec4( (1-factor)*color1 + factor*color2 ,opacity);
       }
       else {
-         gl_FragColor=vec4(vec3(0.0f),opacity);
+         gl_FragColor=vec4(vec3(0.0f),1);
       }
    }
    else

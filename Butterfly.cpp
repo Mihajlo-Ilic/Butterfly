@@ -12,6 +12,8 @@ GLuint vertices_id;
 GLuint edges_id;
 GLuint program_id;
 
+GLuint check_full;
+
 GLuint orto_location;
 GLuint model_location;
 GLuint type_location;
@@ -33,6 +35,8 @@ Font regular_font;
 
 int mouse_x=0;
 int mouse_y=0;
+
+int window_height=0;
 
 //!!!!!!!!!!!!!!!!!!!!
 //!!HELPER FUNCTIONS!!
@@ -62,6 +66,10 @@ void load_model_matrix(float x,float y,float width,float heigth){
 
 bool mouse_in_rect(Rectangle r){
     return ( mouse_x>=r.x && mouse_x<=r.x+r.width && mouse_y>=r.y && mouse_y<=r.y+r.height );
+}
+
+void load_vec3(GLuint id,Vector3 v){
+    glUniform3f(id,v.r,v.g,v.b);
 }
 //!!!!!!!!!!!!!!!!!!!!!!!!!!
 //!!IMAGE AND FILE LOADING!!
@@ -262,7 +270,8 @@ void Styles_Initialize(){
 
 void Butterfly_Initialize(){
     Styles_Initialize();
-
+    load_bmp("Resources/ikon.bmp");
+    check_full=load_bmp("Resources/check.bmp");
     GLuint vertex_shader=glCreateShader(GL_VERTEX_SHADER);
     GLuint fragment_shader=glCreateShader(GL_FRAGMENT_SHADER);
     ifstream file("./Resources/v_shader.vert");
@@ -431,14 +440,150 @@ Button::Button():Component("tmp_button_"+to_string(component_counter++)){
     style=panel_style;
     vao=make_text(text,style,text_width,text_height);
     image_id=0;
-    press_color={style.color1.r+0.1f,style.color1.g+0.5f,style.color1.b+0.1f};
-    click_color={style.color1.r+0.5f,style.color1.g+0.1f,style.color1.b+0.1f};
+    press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
+    click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
     click=nullptr;
+    background_rectangle=true;
+    icon=false;
+}
+
+void Button::set_text_size(int size){
+    style.text_size=size;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+    if(text_width+text_height+5>rect.width)
+    rect.width=text_width+text_height+5;
+    if(text_height+5>rect.height)
+    rect.height=text_height+5;
+}
+
+void Button::set_text(string t){
+    text=t;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+    if(text_width+text_height+5>rect.width)
+    rect.width=text_width+text_height+5;
+    if(text_height+5>rect.height)
+    rect.height=text_height+5;
+}
+
+void Button::rect_uniforms(){
+    glUniform1i(type_location,0);
+    if(state==BUTTON_IDLE){
+        load_vec3(color1_location,style.color1);
+        load_vec3(color2_location,style.color2);
+    }
+    if(state==BUTTON_HOVER){
+        load_vec3(color1_location,press_color);
+        load_vec3(color2_location,press_color);
+    }
+    if(state==BUTTON_PRESS){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+    if(state==BUTTON_CLICKED){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
 }
 
 ToggleButton::ToggleButton():Component("tmp_toggle_button"+to_string(component_counter++)){
-
+    rect={75,75,100,35};
+    tooltip="";
+    text="toggle";
+    style=panel_style;
+    vao=make_text(text,style,text_width,text_height);
+    image_id=0;
+    press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
+    click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
+    toggle=nullptr;
+    background_rectangle=true;
+    icon=false;
+    value=false;
 }
+
+void ToggleButton::rect_uniforms(){
+    glUniform1i(type_location,0);
+    if(state==BUTTON_IDLE){
+        if(value){
+        load_vec3(color1_location,{0.2f,0.30f,0.20f});
+        load_vec3(color2_location,{0.2f,0.30f,0.20f});
+        }
+        else{
+        load_vec3(color1_location,style.color1);
+        load_vec3(color2_location,style.color2);
+        }
+    }
+    if(state==BUTTON_HOVER){
+        load_vec3(color1_location,press_color);
+        load_vec3(color2_location,press_color);
+    }
+    if(state==BUTTON_PRESS){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+    if(state==BUTTON_CLICKED){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+}
+
+void ToggleButton::set_text_size(int size){
+    style.text_size=size;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+    if(text_width+text_height+5>rect.width)
+    rect.width=text_width+text_height+5;
+    if(text_height+5>rect.height)
+    rect.height=text_height+5;
+}
+
+void ToggleButton::set_text(string t){
+    text=t;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+    if(text_width+text_height+5>rect.width)
+    rect.width=text_width+text_height+5;
+    if(text_height+5>rect.height)
+    rect.height=text_height+5;
+}
+
+void CheckBox::set_text_size(int size){
+    style.text_size=size;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+    if(text_width+text_height+5>rect.width)
+    rect.width=text_width+text_height+5;
+    if(text_height+5>rect.height)
+    rect.height=text_height+5;
+}
+
+void CheckBox::set_text(string t){
+    text=t;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+    if(text_width+text_height+5>rect.width)
+    rect.width=text_width+text_height+5;
+    if(text_height+5>rect.height)
+    rect.height=text_height+5;
+}
+
+
+CheckBox::CheckBox():Component("tmp_checkbox"+to_string(component_counter++)){
+    rect={75,75,100,35};
+    tooltip="";
+    text="checkbox";
+    style=panel_style;
+    vao=make_text(text,style,text_width,text_height);
+    image_id=0;
+    press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
+    click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
+    toggle=nullptr;
+    background_rectangle=true;
+    icon=false;
+    value=false;
+}
+
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //!!!!!!!!!!!DRAWING METHODS!!!!!!!!!!!!!!
@@ -483,6 +628,7 @@ void Panel::prepare_style_header(){
 void Panel::draw(){
     glUniform1i(border_width_location,style.border_width);
     glUniform2f(rect_size_location,rect.width,rect.height);
+    glUniform1f(opacity_location,style.opacity);
     prepare_style();
     draw_rectangle(rect);
     prepare_style_header();
@@ -499,48 +645,113 @@ void Button::draw(){
     glUniform1i(border_width_location,style.border_width);
     glUniform2f(rect_size_location,rect.width,rect.height);
     process_events();
-    if(state==0){
-        glUniform3f(color1_location,style.color1.r,style.color1.g,style.color1.b);
-        glUniform3f(color2_location,style.color2.r,style.color2.g,style.color2.b);
-        glUniform1i(type_location,0);
+    float box[4];
+    glGetFloatv(GL_SCISSOR_BOX,box);
+    glScissor(rect.x,window_height-rect.y-rect.height,rect.width,rect.height);
+    if(background_rectangle){
+        rect_uniforms();
+        draw_rectangle(rect);
     }
-    if(state==1){
-        glUniform3f(color1_location,style.color1.r,style.color1.g+0.15f,style.color1.b);
-        glUniform3f(color2_location,style.color2.r,style.color2.g+0.15f,style.color2.b);
-        glUniform1i(type_location,0);
-    }
-    if(state==2){
-        glUniform3f(color1_location,press_color.r,press_color.g,press_color.b);
-        glUniform3f(color2_location,press_color.r,press_color.g,press_color.b);
-        glUniform1i(type_location,0);
-    }
-    if(state==3){
-        glUniform3f(color1_location,click_color.r,click_color.g,click_color.b);
-        glUniform3f(color2_location,click_color.r,click_color.g,click_color.b);
-        glUniform1i(type_location,0);
-    }
-    draw_rectangle(rect);
+    int x_pos=0;
+    int y_pos=0;
+    x_pos=rect.width-text_width;
+    if(icon)
+        x_pos-=text_height;
+    y_pos=rect.height-text_height;
 
-    glUniform3f(color1_location,style.text_color.r,style.text_color.g,style.text_color.b);
-    glUniform1f(opacity_location,style.opacity);
+    x_pos=max(0,x_pos/2);
+    y_pos=max(0,y_pos/2);
+
+    if(!icon){
+        glBindTexture(GL_TEXTURE_2D,image_id);
+        glUniform1i(type_location,2);
+        if(image_id!=0)
+        draw_rectangle({rect.x+1,rect.y+1,rect.width-1,rect.height-1});
+    }
+    else {
+        glBindTexture(GL_TEXTURE_2D,image_id);
+        glUniform1i(type_location,2);
+        int ord=0;
+        if(order==LEFT_TO_RIGHT)
+            ord=text_width;
+        if(image_id!=0)
+        draw_rectangle({rect.x+x_pos+ord,rect.y+y_pos,text_height,text_height});
+    }
+    load_vec3(color1_location,style.text_color);
     glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
     glUniform1i(type_location,1);
-    float x_pos=rect.width-text_width;
-    if(x_pos>0)
-        x_pos/=2.0f;
-    else 
-        x_pos=0;
-    float y_pos=rect.height-text_height;
-    if(y_pos>0)
-        y_pos/=2.0f;
-    else 
-        y_pos=0;
-    draw_text(vao,rect.x+x_pos,rect.y+y_pos,style.text_size*12);
-
+    int ord=0;
+    if(order==RIGHT_TO_LEFT)
+        ord=+text_height;
+    draw_text(vao,rect.x+x_pos+ord,rect.y+y_pos,style.text_size*12);
+    glScissor(box[0],box[1],box[2],box[3]);
 }
 
 void ToggleButton::draw(){
+    glUniform1i(border_width_location,style.border_width);
+    glUniform2f(rect_size_location,rect.width,rect.height);
+    process_events();
+    float box[4];
+    glGetFloatv(GL_SCISSOR_BOX,box);
+    glScissor(rect.x,window_height-rect.y-rect.height,rect.width,rect.height);
+    if(background_rectangle){
+        rect_uniforms();
+        draw_rectangle(rect);
+    }
+    int x_pos=0;
+    int y_pos=0;
+    x_pos=rect.width-text_width;
+    if(icon)
+        x_pos-=text_height;
+    y_pos=rect.height-text_height;
 
+    x_pos=max(0,x_pos/2);
+    y_pos=max(0,y_pos/2);
+
+    if(!icon){
+        glBindTexture(GL_TEXTURE_2D,image_id);
+        glUniform1i(type_location,2);
+        if(image_id!=0)
+        draw_rectangle({rect.x+1,rect.y+1,rect.width-1,rect.height-1});
+    }
+    else {
+        glBindTexture(GL_TEXTURE_2D,image_id);
+        glUniform1i(type_location,2);
+        int ord=0;
+        if(order==LEFT_TO_RIGHT)
+            ord=text_width;
+        if(image_id!=0)
+        draw_rectangle({rect.x+x_pos+ord,rect.y+y_pos,text_height,text_height});
+    }
+    load_vec3(color1_location,style.text_color);
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    glUniform1i(type_location,1);
+    int ord=0;
+    if(order==RIGHT_TO_LEFT)
+        ord=+text_height;
+    draw_text(vao,rect.x+x_pos+ord,rect.y+y_pos,style.text_size*12);
+    glScissor(box[0],box[1],box[2],box[3]);
+}
+
+void CheckBox::draw(){
+    glUniform1i(border_width_location,style.border_width);
+    glUniform2f(rect_size_location,rect.width,rect.height);
+    process_events();
+    glUniform1i(type_location,1);
+    load_vec3(color1_location,style.text_color);
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    draw_text(vao,rect.x,rect.y,style.text_size*12);
+
+    glUniform1i(type_location,0);
+    glBindTexture(GL_TEXTURE_2D,check_full);
+    load_vec3(color1_location,style.color1);
+    load_vec3(color2_location,style.color2);
+    draw_rectangle({rect.x+text_width+5,rect.y+2,text_height,text_height});
+
+    if(value){
+        glUniform1i(type_location,2);
+        draw_rectangle({rect.x+text_width+5,rect.y+2,text_height,text_height});
+    }
 }
 
 void Window::draw(GLFWwindow *window){
@@ -553,7 +764,7 @@ void Window::draw(GLFWwindow *window){
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_SCISSOR_TEST);
     glScissor(0,0,w,h);
-
+    window_height=h;
     glViewport(0,0,w,h);
 
     for(auto panel:panels)
@@ -571,21 +782,55 @@ void Window::draw(GLFWwindow *window){
 void Button::process_events(){
     if(mouse_in_rect(rect)){
         if(mouse_click){
-            state=3;
+            state=BUTTON_CLICKED;
             if(click!=nullptr)
                 click();
         }
         else
             if(mouse_hold)
-                state=2;
+                state=BUTTON_PRESS;
         else
-            state=1;
+            state=BUTTON_HOVER;
     }
     else
-        state=0;
+        state=BUTTON_IDLE;
 }
 
 void ToggleButton::process_events(){
-    
+    if(mouse_in_rect(rect)){
+        if(mouse_click){
+            state=BUTTON_CLICKED;
+            value=!value;
+            if(toggle!=nullptr){
+                toggle();
+            }
+        }
+        else
+            if(mouse_hold)
+                state=BUTTON_PRESS;
+        else
+            state=BUTTON_HOVER;
+    }
+    else
+        state=BUTTON_IDLE;
+}
+
+void CheckBox::process_events(){
+    if(mouse_in_rect({rect.x+text_width+5,rect.y+2,text_height,text_height})){
+        if(mouse_click){
+            state=BUTTON_CLICKED;
+            value=!value;
+            if(toggle!=nullptr){
+                toggle();
+            }
+        }
+        else
+            if(mouse_hold)
+                state=BUTTON_PRESS;
+        else
+            state=BUTTON_HOVER;
+    }
+    else
+        state=BUTTON_IDLE;
 }
 
