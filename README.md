@@ -15,4 +15,4 @@
 <li>Panels</li>
 <li>Text/Image Buttons (click events)</li>
 </ul>
-<a href="url"><img src="progress_images/begining.png" height="450" width="750" ></a>
+<a href="url"><img src="progress_images/commit_1.gif" height="450" width="750" ></a>
