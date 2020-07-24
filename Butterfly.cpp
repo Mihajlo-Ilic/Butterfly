@@ -271,6 +271,8 @@ void Styles_Initialize(){
 void Butterfly_Initialize(){
     Styles_Initialize();
     load_bmp("Resources/ikon.bmp");
+    load_bmp("Resources/down.bmp");
+    load_bmp("Resources/right.bmp");
     check_full=load_bmp("Resources/check.bmp");
     GLuint vertex_shader=glCreateShader(GL_VERTEX_SHADER);
     GLuint fragment_shader=glCreateShader(GL_FRAGMENT_SHADER);
@@ -579,10 +581,131 @@ CheckBox::CheckBox():Component("tmp_checkbox"+to_string(component_counter++)){
     press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
     click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
     toggle=nullptr;
-    background_rectangle=true;
     icon=false;
     value=false;
 }
+
+RadioButton::RadioButton():Component("tmp_radio"+to_string(component_counter++)){
+    rect={75,75,100,35};
+    tooltip="";
+    text="radio button";
+    style=panel_style;
+    vao=make_text(text,style,text_width,text_height);
+    image_id=0;
+    press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
+    click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
+    toggle=nullptr;
+    icon=false;
+    value=false;
+}
+
+ComboItem::ComboItem():Component("tmp_combo_item"+to_string(component_counter++)){
+    rect={75,75,175,25};
+    tooltip="";
+    text="combo item";
+    style=panel_style;
+    vao=make_text(text,style,text_width,text_height);
+    image_id=0;
+    press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
+    click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
+    opened=false;
+    sub_item_width=175;
+    sub_item_height=25;
+}
+
+void ComboItem::set_text_size(int size){
+    style.text_size=size;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+}
+
+void ComboItem::set_text(string t){
+    text=t;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+}
+
+ComboBox::ComboBox():Component("tmp_combo_box"+to_string(component_counter++)){
+    rect={75,75,175,25};
+    tooltip="";
+    text="combo box";
+    style=panel_style;
+    style.text_size=rect.height-1;
+    vao=make_text(text,style,text_width,text_height);
+    image_id=0;
+    press_color={style.color1.r+0.1f,style.color1.g+0.1f,style.color1.b+0.1f};
+    click_color={style.color1.r+0.05f,style.color1.g+0.05f,style.color1.b+0.05f};
+    opened=false;
+    item_width=175;
+    item_height=25;
+    selected=nullptr;
+    opened=false;
+}
+
+void ComboBox::set_text_size(int size){
+    style.text_size=size;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+}
+
+void ComboBox::set_text(string t){
+    text=t;
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(text,style,text_width,text_height);
+}
+
+void ComboBox::set_default_text(string t){
+    glDeleteVertexArrays(1,&default_vao);
+    default_vao=make_text(t,style,text_width,text_height);
+}
+
+void ComboBox::rect_uniforms(){
+    glUniform1i(type_location,0);
+    if(state==BUTTON_IDLE){
+        load_vec3(color1_location,style.color1);
+        load_vec3(color2_location,style.color2);
+    }
+    if(state==BUTTON_HOVER){
+        load_vec3(color1_location,press_color);
+        load_vec3(color2_location,press_color);
+    }
+    if(state==BUTTON_PRESS){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+    if(state==BUTTON_CLICKED){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+}
+
+void ComboBox::change_selection(ComboItem *it){
+    glDeleteVertexArrays(1,&vao);
+    vao=make_text(it->get_text(),style,text_width,text_height);
+    opened=false;
+}
+
+void ComboItem::rect_uniforms(){
+    glUniform1i(type_location,0);
+    if(state==BUTTON_IDLE){
+        load_vec3(color1_location,style.color1);
+        load_vec3(color2_location,style.color2);      
+    }
+    if(state==BUTTON_HOVER){
+        load_vec3(color1_location,press_color);
+        load_vec3(color2_location,press_color);
+    }
+    if(state==BUTTON_PRESS){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+    if(state==BUTTON_CLICKED){
+        load_vec3(color1_location,click_color);
+        load_vec3(color2_location,click_color);
+    }
+}
+
+
 
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -675,7 +798,7 @@ void Button::draw(){
         if(order==LEFT_TO_RIGHT)
             ord=text_width;
         if(image_id!=0)
-        draw_rectangle({rect.x+x_pos+ord,rect.y+y_pos,text_height,text_height});
+        draw_rectangle({rect.x+x_pos+ord,rect.y+y_pos,(int)text_height,(int)text_height});
     }
     load_vec3(color1_location,style.text_color);
     glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
@@ -721,7 +844,7 @@ void ToggleButton::draw(){
         if(order==LEFT_TO_RIGHT)
             ord=text_width;
         if(image_id!=0)
-        draw_rectangle({rect.x+x_pos+ord,rect.y+y_pos,text_height,text_height});
+        draw_rectangle({rect.x+x_pos+ord,rect.y+y_pos,(int)text_height,(int)text_height});
     }
     load_vec3(color1_location,style.text_color);
     glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
@@ -735,7 +858,7 @@ void ToggleButton::draw(){
 
 void CheckBox::draw(){
     glUniform1i(border_width_location,style.border_width);
-    glUniform2f(rect_size_location,rect.width,rect.height);
+    glUniform2f(rect_size_location,text_height,text_height);
     process_events();
     glUniform1i(type_location,1);
     load_vec3(color1_location,style.text_color);
@@ -746,11 +869,101 @@ void CheckBox::draw(){
     glBindTexture(GL_TEXTURE_2D,check_full);
     load_vec3(color1_location,style.color1);
     load_vec3(color2_location,style.color2);
-    draw_rectangle({rect.x+text_width+5,rect.y+2,text_height,text_height});
+    draw_rectangle({rect.x+(int)text_width+5,rect.y+2,(int)text_height,(int)text_height});
 
     if(value){
         glUniform1i(type_location,2);
-        draw_rectangle({rect.x+text_width+5,rect.y+2,text_height,text_height});
+        draw_rectangle({rect.x+(int)text_width+5,rect.y+2,(int)text_height,(int)text_height});
+    }
+}
+
+void RadioButton::draw(){
+    glUniform1i(border_width_location,style.border_width);
+    glUniform2f(rect_size_location,text_height,text_height);
+    process_events();
+    glUniform1i(type_location,1);
+    load_vec3(color1_location,style.text_color);
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    draw_text(vao,rect.x,rect.y,style.text_size*12);
+
+    glUniform1i(type_location,3);
+    load_vec3(color1_location,style.color1);
+    load_vec3(color2_location,style.color2);
+    draw_rectangle({rect.x+(int)text_width+5,rect.y+2,(int)text_height,(int)text_height});
+
+    if(value){
+        load_vec3(color1_location,{0.2f,0.3f,0.2f});
+        draw_rectangle({rect.x+(int)text_width+5,rect.y+2,(int)text_height,(int)text_height});
+    }
+}
+
+void ComboItem::draw(){
+    glUniform1i(border_width_location,0);
+    glUniform2f(rect_size_location,text_height,text_height);
+    process_events();
+    rect_uniforms();
+    if(state==BUTTON_HOVER || state==BUTTON_PRESS || state==BUTTON_CLICKED || opened)
+    draw_rectangle(rect);
+    glUniform1i(type_location,1);
+    load_vec3(color1_location,style.text_color);
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    draw_text(vao,rect.x+text_height+5,rect.y,style.text_size*12);
+
+    if(image_id!=0){
+        glUniform1i(type_location,2);
+        glBindTexture(GL_TEXTURE_2D,image_id);
+        draw_rectangle({rect.x,rect.y,(int)text_height,(int)text_height});
+    }
+    if(sub_items.size()>=1){
+        glUniform1i(type_location,2);
+        glBindTexture(GL_TEXTURE_2D,4);
+        draw_rectangle({rect.x+rect.width-rect.height-5,rect.y,(int)text_height,(int)text_height});
+        if(opened){
+        int x=rect.x+rect.width;
+        int y=rect.y;
+        glUniform2f(rect_size_location,rect.width,(int)sub_items.size()*sub_item_height+5);
+        glUniform1i(type_location,0);
+        load_vec3(color1_location,style.color1);
+        load_vec3(color2_location,style.color2);
+        glUniform1i(border_width_location,1);
+        draw_rectangle({x,rect.y,sub_item_width,(int)sub_items.size()*sub_item_height+5});
+        for(auto it:sub_items){
+            it->set_position(x,y);
+            it->draw();
+            y+=sub_item_height;
+            }
+        }
+    }
+
+}
+
+void ComboBox::draw(){
+    glUniform1i(border_width_location,style.border_width);
+    glUniform2f(rect_size_location,rect.width,rect.height);
+    process_events();
+    rect_uniforms();
+    draw_rectangle(rect);
+    glUniform1i(type_location,1);
+    load_vec3(color1_location,style.text_color);
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    draw_text(vao,rect.x+5,rect.y,style.text_size*12);
+
+    glUniform1i(type_location,2);
+    glBindTexture(GL_TEXTURE_2D,3);
+    draw_rectangle({rect.x+rect.width-rect.height-5,rect.y,rect.height,rect.height});
+    float x=rect.x;
+    float y=rect.y+rect.height;
+    if(opened){
+        glUniform2f(rect_size_location,rect.width,(int)items.size()*item_height+5);
+        glUniform1i(type_location,0);
+        load_vec3(color1_location,style.color1);
+        load_vec3(color2_location,style.color2);
+        draw_rectangle({rect.x,rect.y+rect.height,item_width,(int)items.size()*item_height+5});
+    for(auto it:items){
+        it->set_position(x,y+5);
+        it->draw();
+        y+=item_height;
+        }
     }
 }
 
@@ -816,7 +1029,7 @@ void ToggleButton::process_events(){
 }
 
 void CheckBox::process_events(){
-    if(mouse_in_rect({rect.x+text_width+5,rect.y+2,text_height,text_height})){
+    if(mouse_in_rect({rect.x+(int)text_width+5,rect.y+2,(int)text_height,(int)text_height})){
         if(mouse_click){
             state=BUTTON_CLICKED;
             value=!value;
@@ -832,5 +1045,101 @@ void CheckBox::process_events(){
     }
     else
         state=BUTTON_IDLE;
+}
+
+void RadioButton::process_events(){
+    if(mouse_in_rect({rect.x+(int)text_width+5,rect.y+2,(int)text_height,(int)text_height})){
+        if(mouse_click){
+            state=BUTTON_CLICKED;
+            if(rg==nullptr){
+                value=!value;
+                if(toggle!=nullptr){
+                    toggle();
+                }
+            }
+            else{
+                if(rg->multiple==false){
+                    if(!value && rg->allow_none==false){
+                        value=!value;
+                        if(rg->selected!=nullptr)
+                            rg->selected->value=false;
+                        rg->selected=this;
+                        if(toggle!=nullptr)
+                            toggle();
+                    }
+                    if(rg->allow_none){
+                        value=!value;
+                        if(rg->selected!=nullptr)
+                            rg->selected->value=false;
+                        rg->selected=this;
+                        if(toggle!=nullptr)
+                            toggle();
+                        if(!value)
+                            rg->selected=nullptr;
+                    }
+                }
+                else{
+                    if(rg->allow_none==false && rg->num_selected==1 && value){
+
+                    }
+                    else {
+                        value=!value;
+                        rg->selected=this;
+                        if(toggle!=nullptr)
+                            toggle();
+                        if(value)
+                            rg->num_selected++;
+                        else rg->num_selected--;
+                    }
+                }
+            }
+                    
+        }
+        else
+            if(mouse_hold)
+                state=BUTTON_PRESS;
+        else
+            state=BUTTON_HOVER;
+    }
+    else
+        state=BUTTON_IDLE;
+}
+
+void ComboItem::process_events(){
+    if(mouse_in_rect(rect)){
+        if(mouse_click){
+            state=BUTTON_CLICKED;
+            if(sub_items.size()>0)
+             opened=!opened;
+            else
+             parent->change_selection(this);
+        }
+        else
+            if(mouse_hold)
+                state=BUTTON_PRESS;
+        else {
+            state=BUTTON_HOVER;
+        }
+    }
+    else {
+        state=BUTTON_IDLE;
+    }
+}
+
+void ComboBox::process_events(){
+    if(mouse_in_rect(rect)){
+        if(mouse_click){
+            state=BUTTON_CLICKED;
+            opened=!opened;
+        }
+        else
+            if(mouse_hold)
+                state=BUTTON_PRESS;
+        else
+            state=BUTTON_HOVER;
+    }
+    else{
+        state=BUTTON_IDLE;
+    }
 }
 

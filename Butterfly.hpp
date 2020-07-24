@@ -89,6 +89,7 @@ using namespace std;
   public:
    virtual void draw() =0;
    virtual void process_events() =0;
+
   protected:
    int state;
    int constraint_width;
@@ -111,6 +112,10 @@ using namespace std;
        animation_timer=0;
    }
 
+  bool operator==(const Component& c){
+     return name==c.get_name();
+   }
+
    bool visible;
    
    void set_position(int _x,int _y)      { rect.x=_x;rect.y=_y;  }
@@ -128,6 +133,9 @@ using namespace std;
    void set_order(int i)                 { order=i; }
    void set_text(string t);
    void set_texture_id(GLuint id)        { image_id=id; }
+
+   string get_name() const {return name;}
+   string get_text() const {return text;}
 
   protected:
 
@@ -205,25 +213,150 @@ class CheckBox : public Component{
     void process_events();
 
     void set_options(unsigned bitmask) {}
-    void has_render_rect(bool b){background_rectangle=b;}
     void has_icon(bool b){icon=b;}
     void set_text_size(int size);
     void set_text(string t);
 
   private:
-    void rect_uniforms();
     Vector3 press_color;
     Vector3 click_color;
 
     void (*toggle)(void);
     bool value;
 
-    bool background_rectangle;
     bool icon;
+};
+
+class RadioGroup;
+
+class RadioButton : public Component{
+  public:
+    RadioButton();
+    void set_toggle_event(void (*toggle_event)(void)){
+       toggle=toggle_event;
+     }
+    void draw();
+    void process_events();
+
+    void set_options(unsigned bitmask) {}
+    void set_text_size(int size);
+    void set_text(string t);
+    void set_value(bool b){value=b;}
+    RadioGroup* rg=nullptr;
+
+  private:
+    Vector3 press_color;
+    Vector3 click_color;
+
+    void (*toggle)(void);
+    bool value;
+    bool icon;
+
+};
+
+class ComboBox;
+
+class ComboItem : public Component {
+  public:
+    ComboItem();
+
+    void draw();
+    void process_events();
+
+    void set_text_size(int size);
+    void set_text(string t);
+
+    ComboBox *parent=nullptr;
+
+    void add_item(ComboItem *item){
+      sub_items.push_back(item);
+      item->parent=parent;
+      item->set_size(sub_item_width,sub_item_height);
+      item->set_text_size(sub_item_height-2);
+    }
+
+  private:
+
+    void rect_uniforms();
+    Vector3 press_color;
+    Vector3 click_color;
+    bool opened;
+
+    int sub_item_width;
+    int sub_item_height;
+
+    vector<ComboItem *> sub_items; 
+};
+
+class ComboBox : public Component{
+  public:
+    ComboBox();
+
+    void draw();
+    void process_events();
+
+    void set_text_size(int size);
+    void set_text(string t);
+
+    ComboBox *parent=nullptr;
+
+    void add_item(ComboItem *item){
+      items.push_back(item);
+      item->parent=this;
+      item->set_size(item_width,item_height);
+      item->set_text_size(item_height-2);
+    }
+
+    void set_default_text(string t);
+    void change_selection(ComboItem *it);
+
+    ComboItem *selected;
+    bool focus=false;
+  private:
+    void rect_uniforms();
+
+    Vector3 press_color;
+    Vector3 click_color;
+    bool opened;
+
+    int item_width;
+    int item_height;
+
+    GLuint default_vao;
+
+    vector<ComboItem *> items;
 };
 
 
 //CONTAINERS
+
+class RadioGroup {
+  public:
+
+    RadioGroup(){
+      multiple=false;
+      allow_none=false;
+    }
+
+    void add_to_group(RadioButton *rb){
+      buttons.push_back(rb);
+      if(rb->rg!=nullptr)
+        rb->rg->remove(rb);
+      rb->rg=this;
+    }
+
+    void remove(RadioButton *rb){
+        
+    }
+
+    bool allow_none=false;
+    bool multiple=false;
+    int num_selected=0;
+    RadioButton *selected;
+
+  private:
+    vector<RadioButton *> buttons;
+};
 
  class Panel{
   public:
