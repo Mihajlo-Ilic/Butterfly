@@ -66,7 +66,7 @@ int main(){
     b1->set_order(RIGHT_TO_LEFT);
 
     b4->set_position(60,300);
-    b4->set_size(200,100);
+    b4->set_size(300,100);
     b4->set_texture_id(2);
     b4->has_icon(true);
     b4->set_order(RIGHT_TO_LEFT);
@@ -112,11 +112,26 @@ int main(){
     ci32->set_text("item32");
     ci33->set_text("item33");
 
+    bfly::ComboItem *ci331=new bfly::ComboItem();
+    bfly::ComboItem *ci332=new bfly::ComboItem();
+    bfly::ComboItem *ci3331=new bfly::ComboItem();
+    ci33->add_item(ci331);
+    ci331->set_text("item331");
+
+    ci33->add_item(ci332);
+    ci332->set_text("item332");
+
+    ci331->add_item(ci3331);
+    ci3331->set_text("item3331");
+
+
+    
+
     while(!glfwWindowShouldClose(prozor)){
         glfwPollEvents();
         glfwSwapBuffers(prozor);
         glClearColor(0.9f,0.9f,0.9f,1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         Butterfly_Input(prozor);
         w->draw(prozor);
 
