@@ -13,6 +13,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cstring>
+#include <sstream>
+#include <iomanip>
 
 namespace bfly
 {
@@ -24,14 +26,25 @@ namespace bfly
 #define MAXIMUM 3
 
 //COMPONENT STATES
-#define BUTTON_IDLE 0
-#define BUTTON_HOVER 1
-#define BUTTON_PRESS 2
-#define BUTTON_CLICKED 3
+#define IDLE 0
+#define HOVER 1
+#define PRESS 2
+#define CLICKED 3
+
+//LABEL TEXT ALLIGNMENT
+#define LEFT 0
+#define CENTER 1
+#define RIGHT 2
+
+#define TOP 0
+#define BOTTOM 2
 
 //ORDER
 #define LEFT_TO_RIGHT 0
 #define RIGHT_TO_LEFT 1
+
+//SLIDER ORIENTATIONS
+#define HORIZONTAL_SLIDER 0
 
   using namespace std;
 
@@ -111,6 +124,7 @@ namespace bfly
     void set_y(int y) { rect.y = y; }
     void set_width(int width) { rect.width = width; }
     void set_height(int height) { rect.height = height; }
+    void set_z(float _z) {z=_z;}
 
   protected:
     float z;
@@ -273,7 +287,7 @@ namespace bfly
 
     void set_options(unsigned bitmask) {}
     void set_value(bool b) { value = b; }
-    RadioGroup *rg = nullptr;
+    RadioGroup *rg;
     void on_focus();
     void on_focus_lost();
 
@@ -378,6 +392,72 @@ namespace bfly
     vector<ComboItem *> items;
   };
 
+  class Label : public Component {
+  public:
+    Label();
+
+    void draw();
+    void process_events();
+
+    void on_focus();
+    void on_focus_lost();
+
+    void use_image_as_icon(bool b){
+      icon=b;
+    }
+
+    void set_allignment_horizontal(int a){
+      allign_h=a;
+    }
+
+    void set_allignment_vertical(int a){
+      allign_v=a;
+    }
+
+    private:
+
+    bool icon;
+    int allign_h;
+    int allign_v;
+  };
+
+  class Slider : public Component{
+    public:
+
+      Slider();
+
+      void draw();
+      void process_events();
+
+      void on_focus();
+      void on_focus_lost();
+      
+      void set_orientation(int a){
+        orientation=a;
+      }
+
+      void set_value(float v){
+        if(v>=minimum && v<=maximum)
+          value=v;
+      }
+      
+    private:
+
+    void update_value(int x);
+    float minimum;
+    float maximum;
+    float value;
+    float step;
+
+    int orientation;
+
+    int slider_size;
+    
+    Vector3 press_color;
+    Vector3 click_color;
+    void rect_uniforms();
+  };
+
   //CONTAINERS
 
   class RadioGroup
@@ -387,6 +467,7 @@ namespace bfly
     {
       multiple = false;
       allow_none = false;
+      selected=nullptr;
     }
 
     void add_to_group(RadioButton *rb)

@@ -26,6 +26,8 @@ GLuint z_location;
 
 bool mouse_hold = false;
 bool mouse_click = false;
+bool mouse_hold_begin = false;
+bool mouse_hold_end = false;
 
 int mouse_state = GLFW_RELEASE;
 
@@ -36,6 +38,8 @@ Font regular_font;
 
 int mouse_x = 0;
 int mouse_y = 0;
+
+int delta_x=0;
 
 int window_height = 0;
 
@@ -280,12 +284,18 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
     {
         mouse_click = true;
         mouse_hold = false;
+        mouse_hold_end = true;
+    }
+    if (action == GLFW_PRESS && mouse_state == GLFW_RELEASE)
+    {
+        mouse_hold_begin=true;
     }
     mouse_state = action;
 }
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
 {
+    delta_x=(int)xpos-mouse_x;
     mouse_x = (int)xpos;
     mouse_y = (int)ypos;
 }
@@ -303,6 +313,8 @@ void Butterfly_Refresh()
 {
     key_pressed = -1;
     mouse_click = false;
+    mouse_hold_begin = false;
+    mouse_hold_end = false;
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -453,8 +465,8 @@ GLuint make_text(string text, Style &style, float &text_width, float &text_heigh
         float x1 = x0 + glyph.width * scale;
         float y0 = y_it + (glyph.y_off * scale);
         float y1 = y0 + glyph.height * scale;
-        if (abs(y1) > text_height)
-            text_height = abs(y1);
+        if (fabs(y1) > text_height)
+            text_height = fabs(y1);
         float ux = (float)glyph.uv_x / (float)style.font.scale_w;
         float ux1 = ux + (float)glyph.width / (float)style.font.scale_w;
         float uy = (float)glyph.uv_y / style.font.scale_h;
@@ -519,6 +531,20 @@ Panel::Panel() : Component("tmp_panel_" + to_string(component_counter++))
     z=-0.5f;
 }
 
+Label::Label():Component("tmp_label_" + to_string(component_counter++)){
+    rect = {75, 75, 100, 35};
+    tooltip = "";
+    text = "label";
+    style = panel_style;
+    vao = make_text(text, style, text_width, text_height);
+    image_id = 0;
+    icon = false;
+    state = IDLE;
+    order=LEFT_TO_RIGHT;
+    allign_h=LEFT;
+    allign_v=TOP;
+}
+
 Button::Button() : Component("tmp_button_" + to_string(component_counter++))
 {
     rect = {75, 75, 100, 35};
@@ -532,28 +558,53 @@ Button::Button() : Component("tmp_button_" + to_string(component_counter++))
     click = nullptr;
     background_rectangle = true;
     icon = false;
-    state = BUTTON_IDLE;
+    state = IDLE;
+    order=LEFT_TO_RIGHT;
 }
 
 void Button::rect_uniforms()
 {
     glUniform1i(type_location, 0);
-    if (state == BUTTON_IDLE)
+    if (state == IDLE)
     {
         load_vec3(color1_location, style.color1);
         load_vec3(color2_location, style.color2);
     }
-    if (state == BUTTON_HOVER)
+    if (state == HOVER)
     {
         load_vec3(color1_location, press_color);
         load_vec3(color2_location, press_color);
     }
-    if (state == BUTTON_PRESS)
+    if (state == PRESS)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
     }
-    if (state == BUTTON_CLICKED)
+    if (state == CLICKED)
+    {
+        load_vec3(color1_location, click_color);
+        load_vec3(color2_location, click_color);
+    }
+}
+
+void Slider::rect_uniforms(){
+    glUniform1i(type_location, 0);
+    if (state == IDLE)
+    {
+        load_vec3(color1_location, style.color1);
+        load_vec3(color2_location, style.color2);
+    }
+    if (state == HOVER)
+    {
+        load_vec3(color1_location, press_color);
+        load_vec3(color2_location, press_color);
+    }
+    if (state == PRESS)
+    {
+        load_vec3(color1_location, click_color);
+        load_vec3(color2_location, click_color);
+    }
+    if (state == CLICKED)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
@@ -579,7 +630,7 @@ ToggleButton::ToggleButton() : Component("tmp_toggle_button" + to_string(compone
 void ToggleButton::rect_uniforms()
 {
     glUniform1i(type_location, 0);
-    if (state == BUTTON_IDLE)
+    if (state == IDLE)
     {
         if (value)
         {
@@ -592,17 +643,17 @@ void ToggleButton::rect_uniforms()
             load_vec3(color2_location, style.color2);
         }
     }
-    if (state == BUTTON_HOVER)
+    if (state == HOVER)
     {
         load_vec3(color1_location, press_color);
         load_vec3(color2_location, press_color);
     }
-    if (state == BUTTON_PRESS)
+    if (state == PRESS)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
     }
-    if (state == BUTTON_CLICKED)
+    if (state == CLICKED)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
@@ -637,6 +688,7 @@ RadioButton::RadioButton() : Component("tmp_radio" + to_string(component_counter
     toggle = nullptr;
     icon = false;
     value = false;
+    
 }
 
 ComboItem::ComboItem() : Component("tmp_combo_item" + to_string(component_counter++))
@@ -682,22 +734,22 @@ void ComboBox::set_default_text(string t)
 void ComboBox::rect_uniforms()
 {
     glUniform1i(type_location, 0);
-    if (state == BUTTON_IDLE)
+    if (state == IDLE)
     {
         load_vec3(color1_location, style.color1);
         load_vec3(color2_location, style.color2);
     }
-    if (state == BUTTON_HOVER)
+    if (state == HOVER)
     {
         load_vec3(color1_location, press_color);
         load_vec3(color2_location, press_color);
     }
-    if (state == BUTTON_PRESS)
+    if (state == PRESS)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
     }
-    if (state == BUTTON_CLICKED)
+    if (state == CLICKED)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
@@ -720,26 +772,44 @@ void ComboBox::change_selected(ComboItem *item)
 void ComboItem::rect_uniforms()
 {
     glUniform1i(type_location, 0);
-    if (state == BUTTON_IDLE)
+    if (state == IDLE)
     {
         load_vec3(color1_location, style.color1);
         load_vec3(color2_location, style.color2);
     }
-    if (state == BUTTON_HOVER)
+    if (state == HOVER)
     {
         load_vec3(color1_location, press_color);
         load_vec3(color2_location, press_color);
     }
-    if (state == BUTTON_PRESS)
+    if (state == PRESS)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
     }
-    if (state == BUTTON_CLICKED)
+    if (state == CLICKED)
     {
         load_vec3(color1_location, click_color);
         load_vec3(color2_location, click_color);
     }
+}
+
+Slider::Slider():Component("tmp_slider_" + to_string(component_counter++)){
+    minimum=0;
+    maximum=100;
+    value=0;
+    step=1;
+    orientation=HORIZONTAL_SLIDER;
+
+    rect = {75, 75, 175, 25};
+    tooltip = "";
+    text = "0";
+    style = panel_style;
+    style.text_size = rect.height - 1;
+    vao = make_text(text, style, text_width, text_height);
+    image_id = 0;
+    state = IDLE;
+    slider_size=10;
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -806,6 +876,7 @@ void Panel::draw()
 
 void Button::draw()
 {
+    
     glUniform1i(border_width_location, style.border_width);
     glUniform2f(rect_size_location, rect.width, rect.height);
     glUniform1f(z_location, z);
@@ -851,12 +922,65 @@ void Button::draw()
     int ord = 0;
     if (order == RIGHT_TO_LEFT)
         ord = +text_height;
-    draw_text(vao, rect.x + x_pos + ord, rect.y + y_pos, style.text_size * 12);
+    draw_text(vao, rect.x + x_pos + ord, rect.y + y_pos, text.size() * 12);
+    glScissor(box[0], box[1], box[2], box[3]);
+}
+
+void Label::draw(){
+    glUniform1f(opacity_location, style.opacity);
+    glUniform1f(z_location, z);
+    process_events();
+    float box[4];
+    glGetFloatv(GL_SCISSOR_BOX, box);
+    glScissor(rect.x, window_height - rect.y - rect.height, rect.width, rect.height);
+    if(icon==false){
+        glBindTexture(GL_TEXTURE_2D,image_id);
+        glUniform1i(type_location,2);
+        if(image_id!=0)
+        draw_rectangle(rect);
+    }
+    float width=text_width;
+
+    if(icon==true)
+        width+=4+text_height;
+
+    float x_pos=0;
+    float y_pos=0;
+
+    if(allign_h==LEFT) x_pos=rect.x;
+    if(allign_h==CENTER) {
+        x_pos=rect.width-width;
+        x_pos=max(0.0f,x_pos/2.0f);
+        x_pos=rect.x+x_pos;
+    }
+    if(allign_h==RIGHT) x_pos=rect.x+rect.width-width;
+
+    if(allign_v==TOP) y_pos=rect.y;
+    if(allign_v==CENTER) {
+        y_pos=rect.height-text_height;
+        y_pos=max(0.0f,y_pos/2.0f);
+        y_pos=rect.y+y_pos;
+    }
+    if(allign_v==BOTTOM) y_pos=rect.y+rect.height-text_height;
+
+
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    glUniform1i(type_location,1);
+    load_vec3(color1_location,style.text_color);
+    draw_text(vao,x_pos,y_pos,text.size()*12);
+
+    if(icon){
+    glBindTexture(GL_TEXTURE_2D,image_id);
+    glUniform1i(type_location,2);
+    if(image_id!=0)
+        draw_rectangle({(int)(x_pos+text_width),(int)y_pos,(int)text_height,(int)text_height});
+    }
     glScissor(box[0], box[1], box[2], box[3]);
 }
 
 void ToggleButton::draw()
 {
+    
     glUniform1i(border_width_location, style.border_width);
     glUniform2f(rect_size_location, rect.width, rect.height);
     glUniform1f(z_location, z);
@@ -902,12 +1026,13 @@ void ToggleButton::draw()
     int ord = 0;
     if (order == RIGHT_TO_LEFT)
         ord = +text_height;
-    draw_text(vao, rect.x + x_pos + ord, rect.y + y_pos, style.text_size * 12);
+    draw_text(vao, rect.x + x_pos + ord, rect.y + y_pos, text.size() * 12);
     glScissor(box[0], box[1], box[2], box[3]);
 }
 
 void CheckBox::draw()
 {
+    
     glUniform1i(border_width_location, style.border_width);
     glUniform2f(rect_size_location, text_height, text_height);
     glUniform1f(z_location, z);
@@ -915,7 +1040,7 @@ void CheckBox::draw()
     glUniform1i(type_location, 1);
     load_vec3(color1_location, style.text_color);
     glBindTexture(GL_TEXTURE_2D, style.font.font_atlas);
-    draw_text(vao, rect.x, rect.y, style.text_size * 12);
+    draw_text(vao, rect.x, rect.y, text.size() * 12);
 
     glUniform1i(type_location, 0);
     glBindTexture(GL_TEXTURE_2D, check_full);
@@ -932,6 +1057,7 @@ void CheckBox::draw()
 
 void RadioButton::draw()
 {
+    
     glUniform1i(border_width_location, style.border_width);
     glUniform2f(rect_size_location, text_height, text_height);
     glUniform1f(z_location, z);
@@ -939,7 +1065,7 @@ void RadioButton::draw()
     glUniform1i(type_location, 1);
     load_vec3(color1_location, style.text_color);
     glBindTexture(GL_TEXTURE_2D, style.font.font_atlas);
-    draw_text(vao, rect.x, rect.y, style.text_size * 12);
+    draw_text(vao, rect.x, rect.y, text.size() * 12);
 
     glUniform1i(type_location, 3);
     load_vec3(color1_location, style.color1);
@@ -955,16 +1081,18 @@ void RadioButton::draw()
 
 void ComboItem::draw()
 {
+    
     glUniform1i(border_width_location, 0);
     glUniform2f(rect_size_location, text_height, text_height);
     glUniform1f(z_location, 1);
     process_events();
     rect_uniforms();
-    draw_rectangle(rect);
+    if(state==HOVER || state==PRESS || state==CLICKED)
+    draw_rectangle({rect.x+1,rect.y+1,rect.width-1,rect.height-1});
     glUniform1i(type_location, 1);
     load_vec3(color1_location, style.text_color);
     glBindTexture(GL_TEXTURE_2D, style.font.font_atlas);
-    draw_text(vao, rect.x + text_height + 5, rect.y, style.text_size * 12);
+    draw_text(vao, rect.x + text_height + 5, rect.y, text.size() * 12);
 
     if (image_id != 0)
     {
@@ -980,7 +1108,7 @@ void ComboItem::draw()
         if (opened)
         {
             int x = rect.x + rect.width;
-            int y = rect.y;
+            int y = rect.y+2;
             glUniform2f(rect_size_location, rect.width, (int)sub_items.size() * sub_item_height + 5);
             glUniform1i(type_location, 0);
             load_vec3(color1_location, style.color1);
@@ -999,6 +1127,7 @@ void ComboItem::draw()
 
 void ComboBox::draw()
 {
+    
     glUniform1i(border_width_location, style.border_width);
     glUniform2f(rect_size_location, rect.width, rect.height);
     glUniform1f(z_location, z);
@@ -1013,7 +1142,7 @@ void ComboBox::draw()
     glUniform1i(type_location, 1);
     load_vec3(color1_location, style.text_color);
     glBindTexture(GL_TEXTURE_2D, style.font.font_atlas);
-    draw_text(vao, rect.x + 10+text_height, rect.y, style.text_size * 12);
+    draw_text(vao, rect.x + 10+text_height, rect.y, text.size() * 12);
 
     glUniform1i(type_location, 2);
     glBindTexture(GL_TEXTURE_2D, 3);
@@ -1026,9 +1155,11 @@ void ComboBox::draw()
         glUniform1i(type_location, 0);
         load_vec3(color1_location, style.color1);
         load_vec3(color2_location, style.color2);
+        glUniform1f(z_location, 1.0f);
         draw_rectangle({rect.x, rect.y + rect.height, item_width, (int)items.size() * item_height + 5});
         for (auto it : items)
         {
+            it->set_z(1.0f);
             it->set_position(x, y + 5);
             it->draw();
             y += item_height;
@@ -1036,8 +1167,39 @@ void ComboBox::draw()
     }
 }
 
+void Slider::draw(){
+    glUniform1i(border_width_location, 0);
+    glUniform2f(rect_size_location, rect.width, 2);
+    glUniform1f(z_location, 0);
+
+    process_events();
+
+    load_vec3(color1_location,style.color1);
+    load_vec3(color2_location,style.color2);
+    glUniform1i(type_location,0);
+
+    draw_rectangle({rect.x,rect.y+rect.height/2-2,rect.width,4});
+    rect_uniforms();
+
+    float scale=value/(maximum-minimum);
+    int x_pos=(int)(scale*((float)rect.width-text_height));
+
+    glUniform1i(type_location,3);
+    glUniform1i(border_width_location, 1);
+    glUniform2f(rect_size_location, rect.height, rect.height);
+    draw_rectangle({rect.x+x_pos,rect.y+2,(int)text_height,(int)text_height});
+
+
+    load_vec3(color1_location,style.text_color);
+    glBindTexture(GL_TEXTURE_2D,style.font.font_atlas);
+    glUniform1i(type_location,1);
+    draw_text(vao,rect.x+rect.width+5,rect.y,text.size()*12);
+
+}
+
 void Window::draw(GLFWwindow *window)
 {
+
     glUseProgram(program_id);
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
@@ -1061,6 +1223,7 @@ void Window::draw(GLFWwindow *window)
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glUseProgram(0);
+
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1074,7 +1237,14 @@ void Button::process_events()
         update_focus(make_pair(this, z));
     }
     else
-        state = BUTTON_IDLE;
+        state = IDLE;
+}
+
+void Label::process_events(){
+    if (mouse_in_rect(rect))
+    {
+        update_focus(make_pair(this, z));
+    }
 }
 
 void ToggleButton::process_events()
@@ -1084,7 +1254,7 @@ void ToggleButton::process_events()
         update_focus(make_pair(this, z));
     }
     else
-        state = BUTTON_IDLE;
+        state = IDLE;
 }
 
 void CheckBox::process_events()
@@ -1094,7 +1264,7 @@ void CheckBox::process_events()
         update_focus(make_pair(this, z));
     }
     else
-        state = BUTTON_IDLE;
+        state = IDLE;
 }
 
 void RadioButton::process_events()
@@ -1104,7 +1274,7 @@ void RadioButton::process_events()
         update_focus(make_pair(this, z));
     }
     else
-        state = BUTTON_IDLE;
+        state = IDLE;
 }
 
 void ComboItem::process_events()
@@ -1114,7 +1284,7 @@ void ComboItem::process_events()
         update_focus(make_pair(this, z));
     }
     else
-        state = BUTTON_IDLE;
+        state = IDLE;
 }
 
 void ComboBox::process_events()
@@ -1123,7 +1293,31 @@ void ComboBox::process_events()
     {
         update_focus(make_pair(this, z));
     }else
-        state = BUTTON_IDLE;
+        state = IDLE;
+}
+
+void Slider::process_events()
+{
+    float scale=value/(maximum-minimum);
+    int x_pos=(int)(scale*((float)rect.width-text_height));
+    
+    if (mouse_in_rect({rect.x+x_pos,rect.y+2,(int)text_height,(int)text_height}) && mouse_hold_begin)
+    {
+        update_focus(make_pair(this, z));
+    }else
+        state = IDLE;
+    if(focused_element.first!=nullptr && focused_element.first==this){
+        int x=mouse_x-rect.x;
+    x=max(0,x);
+    x=min(rect.width-(int)text_height,x);
+    float scale=(float)x/((float)rect.width-text_height);
+    value=scale*maximum;
+    glDeleteVertexArrays(1,&vao);
+    stringstream ss;
+    ss<<fixed<<setprecision(0)<<value;
+    text=ss.str();
+    vao=make_text(ss.str(),style,text_width,text_height);
+    }
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1135,19 +1329,34 @@ void Button::on_focus()
     if (mouse_click)
     {
         clear_focus();
-        state = BUTTON_CLICKED;
+        state = CLICKED;
         if (click != nullptr)
             click();
     }
     else if (mouse_hold)
-        state = BUTTON_PRESS;
+        state = PRESS;
     else
-        state = BUTTON_HOVER;
+        state = HOVER;
 }
 
 void Button::on_focus_lost()
 {
-    state = BUTTON_IDLE;
+    state = IDLE;
+}
+
+void Label::on_focus()
+{
+    if (mouse_click)
+    {
+        clear_focus();
+
+    }
+
+}
+
+void Label::on_focus_lost()
+{
+    
 }
 
 void ToggleButton::on_focus()
@@ -1155,20 +1364,20 @@ void ToggleButton::on_focus()
     if (mouse_click)
     {
         clear_focus();
-        state = BUTTON_CLICKED;
+        state = CLICKED;
         value = !value;
         if (toggle != nullptr)
             toggle();
     }
     else if (mouse_hold)
-        state = BUTTON_PRESS;
+        state = PRESS;
     else
-        state = BUTTON_HOVER;
+        state = HOVER;
 }
 
 void ToggleButton::on_focus_lost()
 {
-    state = BUTTON_IDLE;
+    state = IDLE;
 }
 
 void CheckBox::on_focus()
@@ -1176,20 +1385,20 @@ void CheckBox::on_focus()
     if (mouse_click)
     {
         clear_focus();
-        state = BUTTON_CLICKED;
+        state = CLICKED;
         value = !value;
         if (toggle != nullptr)
             toggle();
     }
     else if (mouse_hold)
-        state = BUTTON_PRESS;
+        state = PRESS;
     else
-        state = BUTTON_HOVER;
+        state = HOVER;
 }
 
 void CheckBox::on_focus_lost()
 {
-    state = BUTTON_IDLE;
+    state = IDLE;
 }
 
 void RadioButton::on_focus()
@@ -1197,7 +1406,7 @@ void RadioButton::on_focus()
     if (mouse_click)
     {
         clear_focus();
-        state = BUTTON_CLICKED;
+        state = CLICKED;
 
         if (rg->multiple == false)
         {
@@ -1250,14 +1459,14 @@ void RadioButton::on_focus()
         }
     }
     else if (mouse_hold)
-        state = BUTTON_PRESS;
+        state = PRESS;
     else
-        state = BUTTON_HOVER;
+        state = HOVER;
 }
 
 void RadioButton::on_focus_lost()
 {
-    state = BUTTON_IDLE;
+    state = IDLE;
 }
 
 void ComboBox::on_focus()
@@ -1266,21 +1475,21 @@ void ComboBox::on_focus()
     {
         opened = !opened;
         clear_focus();
-        state = BUTTON_CLICKED;
+        state = CLICKED;
         if (opened)
         {
             focus(this);
         }
     }
     else if (mouse_hold)
-        state = BUTTON_PRESS;
+        state = PRESS;
     else
-        state = BUTTON_HOVER;
+        state = HOVER;
 }
 
 void ComboBox::on_focus_lost()
 {
-    state = BUTTON_IDLE;
+    state = IDLE;
     opened = false;
     for (auto it : items)
         it->close();
@@ -1296,7 +1505,7 @@ void ComboItem::on_focus()
             if (opened==true)
             {
                 clear_focus();
-                state = BUTTON_CLICKED;
+                state = CLICKED;
                 focus(this);
                 ComboItem *curr=this;
                 while(curr!=nullptr){
@@ -1313,14 +1522,14 @@ void ComboItem::on_focus()
         }
     }
     else if (mouse_hold)
-        state = BUTTON_PRESS;
+        state = PRESS;
     else
-        state = BUTTON_HOVER;
+        state = HOVER;
 }
 
 void ComboItem::on_focus_lost()
 {
-    state = BUTTON_IDLE;
+    state = IDLE;
     ComboItem *curr = this;
     while (curr != nullptr)
     {
@@ -1329,4 +1538,34 @@ void ComboItem::on_focus_lost()
     }
 
     parent_box->set_open(false);
+}
+
+
+void Slider::on_focus()
+{
+    
+
+        if(mouse_hold){
+            clear_focus();
+            focus(this);
+        } else state=IDLE;
+}
+
+void Slider::on_focus_lost()
+{
+    state=IDLE;
+}
+
+void Slider::update_value(int x){
+    x=x-rect.x;
+    x=max(0,x);
+    x=min(rect.width,x);
+    float scale=(float)x/(float)rect.width;
+    value=scale*maximum;
+    glDeleteVertexArrays(1,&vao);
+    stringstream ss;
+    ss<<fixed<<setprecision(8)<<value;
+    text=ss.str();
+    cout<<ss.str()<<endl<<flush;
+    vao=make_text(ss.str(),style,text_width,text_height);
 }

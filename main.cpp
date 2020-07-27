@@ -125,7 +125,13 @@ int main(){
     ci3331->set_text("item3331");
 
 
-    
+    bfly::Label *label=new bfly::Label();
+    p->add_element(label);
+    label->set_position(60,620);
+    bfly::Slider *slider=new bfly::Slider();
+    p->add_element(slider);
+    slider->set_position(60,660);
+
 
     while(!glfwWindowShouldClose(prozor)){
         glfwPollEvents();
