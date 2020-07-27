@@ -18,12 +18,13 @@
 <li>Toggle Buttons (change events)</li>
 <li>Radio Buttons (change events)</li>
 <li>Combo Boxes (change events)</li>
+<li>Slider (change events)</li>
+<li>Labels</li>
 </ul>
-<a href="url"><img src="progress_images/commit_2.gif" ></a>
+<a href="url"><img src="progress_images/commit_3.gif" ></a>
   
 <h4>Working on:<h4>
 <ul>
-<li>Focus component system</li>
-<li>Components in more planes trough z value , so one component can render in front of others</li>
+<li>Input Fields and TextBoxes</li>
 <li>Bug fixes , code refactoring and code cleaning</li>
 </ul>
