@@ -45,6 +45,7 @@ namespace bfly
 
 //SLIDER ORIENTATIONS
 #define HORIZONTAL_SLIDER 0
+#define VERTICAL_SLIDER 1
 
   using namespace std;
 
@@ -120,6 +121,18 @@ namespace bfly
       rect.height = height;
     }
 
+    int get_width(){
+      return rect.width;
+    }
+
+    int get_x(){
+      return rect.x;
+    }
+
+    int get_y(){
+      return rect.y;
+    }
+
     void set_x(int x) { rect.x = x; }
     void set_y(int y) { rect.y = y; }
     void set_width(int width) { rect.width = width; }
@@ -176,6 +189,8 @@ namespace bfly
     string get_name() const { return name; }
     string get_text() const { return text; }
     GLuint get_image() const { return image_id; }
+
+    float get_text_width(){return text_width;}
 
   protected:
     string name;
@@ -301,6 +316,7 @@ namespace bfly
   };
 
   class ComboBox;
+  class TreeView;
 
   class ComboItem : public Component
   {
@@ -458,6 +474,89 @@ namespace bfly
     void rect_uniforms();
   };
 
+
+  class ScrollBar : public Component{
+    public:
+      ScrollBar();
+
+      void draw();
+      void process_events();
+
+      void on_focus();
+      void on_focus_lost();
+
+      void set_width(int width){
+        rect.width=width;
+        if(orientation==HORIZONTAL_SLIDER){
+          set_maximum(width > maximum ? width : maximum);
+        }
+      }
+
+      void set_height(int height){
+        rect.height=height;
+        if(orientation==VERTICAL_SLIDER){
+          set_maximum(height > maximum ? height : maximum);
+        }
+      }
+
+      void set_size(int width, int height){
+      rect.width = width;
+      rect.height = height;
+      if(orientation==HORIZONTAL_SLIDER){
+          set_maximum(width > maximum ? width : maximum);
+        }
+      if(orientation==VERTICAL_SLIDER){
+          set_maximum(height > maximum ? height : maximum);
+        }
+      }
+
+      void set_maximum(float m){
+        maximum=m;
+        if(orientation==HORIZONTAL_SLIDER){
+          float scale=(float)rect.width/maximum;
+          slider_size=scale*rect.width;
+        }
+        if(orientation==VERTICAL_SLIDER){
+          float scale=(float)rect.height/maximum;
+          slider_size=scale*rect.height;
+        }
+        cout<<slider_size<<endl;
+      }
+
+      void set_orientation(int o){
+        orientation=o;
+      }
+
+      float get_value(){
+        int real_width=rect.width-slider_size;
+        int real_height=rect.height-slider_size;
+        if(orientation==HORIZONTAL_SLIDER){
+          cout<<slider_position<<endl;
+          return slider_position;
+        }
+        else {
+          if (real_height!=0)
+          return ((float)slider_position/(float)real_height)*maximum;
+          else return 0;
+        }
+      }
+
+      float get_maximum(){
+        return maximum;
+      }
+
+      private:
+        int slider_position;
+        bool hidden;
+        float maximum;
+        int orientation;
+        int slider_size;
+        void rect_uniforms();
+        Vector3 press_color;
+        Vector3 click_color;
+        int relative_pos=0;
+  };
+
   //CONTAINERS
 
   class RadioGroup
@@ -491,6 +590,7 @@ namespace bfly
     vector<RadioButton *> buttons;
   };
 
+
   class Panel : public Component
   {
   public:
@@ -499,9 +599,44 @@ namespace bfly
     void on_focus() {}
     void on_focus_lost() {}
     void process_events() {}
-    void add_element(Drawable *d)
+    void add_element(Component *d)
     {
       elements.push_back(d);
+      if(d->get_x()+d->get_width()>rect.x+rect.width){
+        cout<<"ee"<<endl;
+        horizontal->set_maximum( (d->get_x()+d->get_width()-rect.x));
+        cout<<horizontal->get_maximum()<<endl;
+      }
+    }
+
+    void set_position(int x, int y)
+    {
+      rect.x = x;
+      rect.y = y;
+      horizontal->set_position(rect.x,rect.height+rect.y-20);
+      horizontal->set_width(rect.width);
+
+      vertical->set_position(rect.x+rect.width-20,rect.y+26);
+      vertical->set_height(rect.height-20-26);
+
+    }
+
+    void set_size(int width, int height)
+    {
+      rect.width = width;
+      rect.height = height;
+      horizontal->set_position(rect.x,rect.height+rect.y-20);
+      horizontal->set_width(rect.width);
+
+      vertical->set_position(rect.x+rect.width-20,rect.y+26);
+      vertical->set_height(rect.height-20-26);
+
+      if(horizontal->get_maximum()<rect.width)
+        horizontal->set_maximum(rect.width);
+
+
+      if(vertical->get_maximum()<rect.height-20-26)
+        vertical->set_maximum(rect.height-20-26);
     }
 
   private:
@@ -509,6 +644,8 @@ namespace bfly
     void prepare_style_text();
     void prepare_style_header();
     vector<Drawable *> elements;
+    ScrollBar *horizontal;
+    ScrollBar *vertical;
   };
 
   class Window

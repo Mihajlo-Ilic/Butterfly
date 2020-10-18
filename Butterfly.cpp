@@ -40,6 +40,7 @@ int mouse_x = 0;
 int mouse_y = 0;
 
 int delta_x=0;
+int delta_y=0;
 
 int window_height = 0;
 
@@ -296,6 +297,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
 {
     delta_x=(int)xpos-mouse_x;
+    delta_y=(int)ypos-mouse_y;
     mouse_x = (int)xpos;
     mouse_y = (int)ypos;
 }
@@ -315,6 +317,8 @@ void Butterfly_Refresh()
     mouse_click = false;
     mouse_hold_begin = false;
     mouse_hold_end = false;
+    delta_x=0;
+    delta_y=0;
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -529,6 +533,15 @@ Panel::Panel() : Component("tmp_panel_" + to_string(component_counter++))
     style.color2 = {0.34f, 0.32f, 0.33f};
     vao = make_text(text, style, text_width, text_height);
     z=-0.5f;
+
+    horizontal=new ScrollBar();
+    horizontal->set_position(rect.x,rect.height+rect.y-20);
+    horizontal->set_width(rect.width);
+
+    vertical=new ScrollBar();
+    vertical->set_position(rect.x,rect.y+26);
+    vertical->set_size(20,rect.height-20);
+    vertical->set_orientation(VERTICAL_SLIDER);
 }
 
 Label::Label():Component("tmp_label_" + to_string(component_counter++)){
@@ -725,6 +738,8 @@ ComboBox::ComboBox() : Component("tmp_combo_box" + to_string(component_counter++
     change = nullptr;
 }
 
+
+
 void ComboBox::set_default_text(string t)
 {
     glDeleteVertexArrays(1, &default_vao);
@@ -794,6 +809,8 @@ void ComboItem::rect_uniforms()
     }
 }
 
+
+
 Slider::Slider():Component("tmp_slider_" + to_string(component_counter++)){
     minimum=0;
     maximum=100;
@@ -807,9 +824,50 @@ Slider::Slider():Component("tmp_slider_" + to_string(component_counter++)){
     style = panel_style;
     style.text_size = rect.height - 1;
     vao = make_text(text, style, text_width, text_height);
+    rect.width+=text_width;
     image_id = 0;
     state = IDLE;
     slider_size=10;
+}
+
+ScrollBar::ScrollBar():Component("tmp_scrollbar" + to_string(component_counter++)){
+    maximum=0;
+    hidden=true;
+    slider_position=0;
+    orientation=HORIZONTAL_SLIDER;
+    rect = {75, 75, 100, 20};
+    style = panel_style;
+    style.text_size = 0;
+    vao = 0;
+    image_id = 0;
+    state = IDLE;
+    press_color = {style.color1.r + 0.1f, style.color1.g + 0.1f, style.color1.b + 0.1f};
+    click_color = {style.color1.r + 0.05f, style.color1.g + 0.05f, style.color1.b + 0.05f};
+}
+
+void ScrollBar::rect_uniforms()
+{
+    glUniform1i(type_location, 0);
+    if (state == IDLE)
+    {
+        load_vec3(color1_location, style.color1);
+        load_vec3(color2_location, style.color2);
+    }
+    if (state == HOVER)
+    {
+        load_vec3(color1_location, press_color);
+        load_vec3(color2_location, press_color);
+    }
+    if (state == PRESS)
+    {
+        load_vec3(color1_location, click_color);
+        load_vec3(color2_location, click_color);
+    }
+    if (state == CLICKED)
+    {
+        load_vec3(color1_location, click_color);
+        load_vec3(color2_location, click_color);
+    }
 }
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -870,8 +928,24 @@ void Panel::draw()
     prepare_style_text();
     draw_text(vao, rect.x + 5, rect.y, text.size() * 12);
 
-    for (auto it : elements)
+    float box[4];
+    glGetFloatv(GL_SCISSOR_BOX, box);
+    glScissor(rect.x, window_height - rect.y - rect.height, rect.width, rect.height);
+
+    for (auto it : elements){
+        int x_curr=it->get_x();
+        int y_curr=it->get_y();
+        it->set_x(it->get_x()-horizontal->get_value());
+        it->set_y(it->get_y()-vertical->get_value());
         it->draw();
+        it->set_x(x_curr);
+        it->set_y(y_curr);
+    }
+
+    horizontal->draw();
+    vertical->draw();
+
+    glScissor(box[0], box[1], box[2], box[3]);
 }
 
 void Button::draw()
@@ -883,7 +957,7 @@ void Button::draw()
     process_events();
     float box[4];
     glGetFloatv(GL_SCISSOR_BOX, box);
-    glScissor(rect.x, window_height - rect.y - rect.height, rect.width, rect.height);
+    glScissor(max(rect.x,(int)box[0]), window_height - rect.y - rect.height, rect.width, rect.height);
     if (background_rectangle)
     {
         rect_uniforms();
@@ -932,7 +1006,7 @@ void Label::draw(){
     process_events();
     float box[4];
     glGetFloatv(GL_SCISSOR_BOX, box);
-    glScissor(rect.x, window_height - rect.y - rect.height, rect.width, rect.height);
+    glScissor(max(rect.x,(int)box[0]), window_height - rect.y - rect.height, rect.width, rect.height);
     if(icon==false){
         glBindTexture(GL_TEXTURE_2D,image_id);
         glUniform1i(type_location,2);
@@ -987,7 +1061,7 @@ void ToggleButton::draw()
     process_events();
     float box[4];
     glGetFloatv(GL_SCISSOR_BOX, box);
-    glScissor(rect.x, window_height - rect.y - rect.height, rect.width, rect.height);
+    glScissor(max(rect.x,(int)box[0]), window_height - rect.y - rect.height, rect.width, rect.height);
     if (background_rectangle)
     {
         rect_uniforms();
@@ -1098,23 +1172,23 @@ void ComboItem::draw()
     {
         glUniform1i(type_location, 2);
         glBindTexture(GL_TEXTURE_2D, image_id);
-        draw_rectangle({rect.x, rect.y, (int)text_height, (int)text_height});
+        draw_rectangle({rect.x, rect.y+2, (int)text_height, (int)text_height});
     }
     if (sub_items.size() >= 1)
     {
         glUniform1i(type_location, 2);
         glBindTexture(GL_TEXTURE_2D, 4);
-        draw_rectangle({rect.x + rect.width - rect.height - 5, rect.y, (int)text_height, (int)text_height});
+        draw_rectangle({rect.x + rect.width - rect.height, rect.y+5, (int)text_height, (int)text_height});
         if (opened)
         {
             int x = rect.x + rect.width;
-            int y = rect.y+2;
-            glUniform2f(rect_size_location, rect.width, (int)sub_items.size() * sub_item_height + 5);
+            int y = rect.y;
+            glUniform2f(rect_size_location, rect.width, (int)sub_items.size() * sub_item_height);
             glUniform1i(type_location, 0);
             load_vec3(color1_location, style.color1);
             load_vec3(color2_location, style.color2);
             glUniform1i(border_width_location, 1);
-            draw_rectangle({x, rect.y, sub_item_width, (int)sub_items.size() * sub_item_height + 5});
+            draw_rectangle({x, rect.y, sub_item_width, (int)sub_items.size() * sub_item_height});
             for (auto it : sub_items)
             {
                 it->set_position(x, y);
@@ -1151,16 +1225,16 @@ void ComboBox::draw()
     float y = rect.y + rect.height;
     if (opened)
     {
-        glUniform2f(rect_size_location, rect.width, (int)items.size() * item_height + 5);
+        glUniform2f(rect_size_location, rect.width, (int)items.size() * item_height );
         glUniform1i(type_location, 0);
         load_vec3(color1_location, style.color1);
         load_vec3(color2_location, style.color2);
         glUniform1f(z_location, 1.0f);
-        draw_rectangle({rect.x, rect.y + rect.height, item_width, (int)items.size() * item_height + 5});
+        draw_rectangle({rect.x, rect.y + rect.height, item_width, (int)items.size() * item_height});
         for (auto it : items)
         {
             it->set_z(1.0f);
-            it->set_position(x, y + 5);
+            it->set_position(x, y);
             it->draw();
             y += item_height;
         }
@@ -1169,7 +1243,7 @@ void ComboBox::draw()
 
 void Slider::draw(){
     glUniform1i(border_width_location, 0);
-    glUniform2f(rect_size_location, rect.width, 2);
+    glUniform2f(rect_size_location, rect.width, rect.height);
     glUniform1f(z_location, 0);
 
     process_events();
@@ -1196,6 +1270,33 @@ void Slider::draw(){
     draw_text(vao,rect.x+rect.width+5,rect.y,text.size()*12);
 
 }
+
+void ScrollBar::draw(){
+    glUniform1i(border_width_location, 0);
+    glUniform2f(rect_size_location, rect.width, rect.height);
+    glUniform1i(border_width_location, 1);
+    glUniform1f(z_location, 0);
+
+    process_events();
+
+    glUniform3f(color1_location+0.1, style.color1.r+0.1, style.color1.g+0.1, style.color1.b+0.1);
+    glUniform3f(color2_location+0.1, style.color2.r+0.1, style.color2.g+0.1, style.color2.b+0.1);
+    glUniform1i(type_location,0);
+
+    draw_rectangle(rect);
+
+    rect_uniforms();
+    
+    if(orientation==HORIZONTAL_SLIDER){
+        glUniform2f(rect_size_location, slider_size, rect.height);
+        draw_rectangle({rect.x+slider_position,rect.y,slider_size,rect.height});
+    }
+    else{
+        glUniform2f(rect_size_location, rect.width, slider_size);
+        draw_rectangle({rect.x,rect.y+slider_position,rect.width,slider_size});
+    }
+}
+
 
 void Window::draw(GLFWwindow *window)
 {
@@ -1249,7 +1350,18 @@ void Label::process_events(){
 
 void ToggleButton::process_events()
 {
-    if (mouse_in_rect(rect))
+    int box[4];
+    glGetIntegerv(GL_SCISSOR_BOX, box);
+    int real_x=max(box[0],rect.x);
+    int real_width=min(box[0]+box[2]-rect.x,rect.width);
+    Rectangle real_rect=rect;
+    real_rect.x=real_x;
+    real_rect.width=real_width;
+    int real_y=max(box[0],rect.y);
+    int real_height=min(box[1]+box[3]-rect.y,rect.height);
+    real_rect.y=real_y;
+    real_rect.height=real_height;
+    if(mouse_in_rect(real_rect))
     {
         update_focus(make_pair(this, z));
     }
@@ -1308,15 +1420,60 @@ void Slider::process_events()
         state = IDLE;
     if(focused_element.first!=nullptr && focused_element.first==this){
         int x=mouse_x-rect.x;
-    x=max(0,x);
-    x=min(rect.width-(int)text_height,x);
-    float scale=(float)x/((float)rect.width-text_height);
-    value=scale*maximum;
-    glDeleteVertexArrays(1,&vao);
-    stringstream ss;
-    ss<<fixed<<setprecision(0)<<value;
-    text=ss.str();
-    vao=make_text(ss.str(),style,text_width,text_height);
+        x=max(0,x);
+        x=min(rect.width-(int)text_height,x);
+        float scale=(float)x/((float)rect.width-text_height);
+        value=scale*maximum;
+        glDeleteVertexArrays(1,&vao);
+        stringstream ss;
+        ss<<fixed<<setprecision(0)<<value;
+        text=ss.str();
+        vao=make_text(ss.str(),style,text_width,text_height);
+    }
+}
+
+void ScrollBar::process_events()
+{
+    if(orientation==HORIZONTAL_SLIDER){
+    if (mouse_in_rect({rect.x+slider_position,rect.y,slider_size,rect.height}))
+    {
+        state = HOVER;
+        if(mouse_hold_begin){
+            relative_pos=mouse_x;
+            update_focus(make_pair(this, z));
+        }
+    }else {
+        state = IDLE;
+        
+    }
+    if(focused_element.first!=nullptr && focused_element.first==this){
+        state = PRESS;
+        int x=delta_x;
+        slider_position+=x;
+        slider_position=max(slider_position,0);
+        slider_position=min(slider_position,rect.width-slider_size);
+        }
+    }
+
+    if(orientation==VERTICAL_SLIDER){
+    if (mouse_in_rect({rect.x,rect.y+slider_position,rect.width,slider_size}))
+    {
+        state = HOVER;
+        if(mouse_hold_begin){
+            relative_pos=mouse_x;
+            update_focus(make_pair(this, z));
+        }
+    }else {
+        state = IDLE;
+        
+    }
+    if(focused_element.first!=nullptr && focused_element.first==this){
+        state = PRESS;
+        int x=delta_y;
+        slider_position+=x;
+        slider_position=max(slider_position,0);
+        slider_position=min(slider_position,rect.height-slider_size);
+    }
     }
 }
 
@@ -1543,15 +1700,28 @@ void ComboItem::on_focus_lost()
 
 void Slider::on_focus()
 {
-    
-
         if(mouse_hold){
             clear_focus();
             focus(this);
-        } else state=IDLE;
+        } 
+        else state=IDLE;
 }
 
 void Slider::on_focus_lost()
+{
+    state=IDLE;
+}
+
+void ScrollBar::on_focus()
+{
+        if(mouse_hold){
+            clear_focus();
+            focus(this);
+        } 
+        else state=IDLE;
+}
+
+void ScrollBar::on_focus_lost()
 {
     state=IDLE;
 }
@@ -1566,6 +1736,5 @@ void Slider::update_value(int x){
     stringstream ss;
     ss<<fixed<<setprecision(8)<<value;
     text=ss.str();
-    cout<<ss.str()<<endl<<flush;
     vao=make_text(ss.str(),style,text_width,text_height);
 }

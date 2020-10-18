@@ -53,7 +53,7 @@ int main(){
     p->add_element(cb);
     p->add_element(rb);
     p->add_element(rb1);
-    tb->set_position(200,210);
+    tb->set_position(150,210);
 
     b->set_texture_id(2);
     b1->set_texture_id(2);
@@ -129,10 +129,11 @@ int main(){
     p->add_element(label);
     label->set_position(60,620);
     bfly::Slider *slider=new bfly::Slider();
+    slider->set_position(500,660);
     p->add_element(slider);
-    slider->set_position(60,660);
+    
 
-
+    int t=650;
     while(!glfwWindowShouldClose(prozor)){
         glfwPollEvents();
         glfwSwapBuffers(prozor);
@@ -140,7 +141,12 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         Butterfly_Input(prozor);
         w->draw(prozor);
-
+        if(glfwGetKey(prozor,GLFW_KEY_0)){
+            bfly::Slider *slider1=new bfly::Slider();
+            slider1->set_position(t,660);
+            p->add_element(slider1);
+            t+=190;
+        }
         Butterfly_Refresh();
     }
     return 0;
